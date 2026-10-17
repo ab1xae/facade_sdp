@@ -17,7 +17,7 @@
         <argLine/>
         <junit.version>5.11.4</junit.version>
         <jacoco.version>0.8.14</jacoco.version>
-        <main.class>com.university.registration.app.RegistrarCli</main.class>
+        <exec.mainClass>com.university.registration.app.RegistrarCli</exec.mainClass>
     </properties>
 
     <dependencies>
@@ -114,9 +114,6 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
-                <configuration>
-                    <mainClass>${main.class}</mainClass>
-                </configuration>
             </plugin>
         </plugins>
     </build>
