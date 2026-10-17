@@ -1,0 +1,184 @@
+@startuml class-diagram
+!pragma layout smetana
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype ortho
+hide empty members
+title University Registration - Facade over A (eligibility) -> B (seating) -> C (records)
+
+left to right direction
+
+package "app (client)" {
+  class RegistrarCli {
+    +main(args)
+  }
+  class Registrar {
+    +open(dataDir, listener): Registrar
+    +registration(): RegistrationFacade
+    +admin(): RegistrarAdminFacade
+  }
+  class DemoData
+}
+
+package "facade" {
+  class RegistrationFacade {
+    +register(studentId, courseCode): Registration
+    +resume(registrationId): Registration
+    +catalog(): List<String>
+    +students(): List<String>
+    -drive(registration)
+  }
+  class RegistrarAdminFacade {
+    +interrupted(): List<Registration>
+    +inspect(id): RegistrationSnapshot
+    +compensate(id, reason): List<String>
+    +finishInterruptedCompensations()
+    +stateReport(): List<String>
+    +setBillingOnline(..) / setTermOpen(..) / setSectionCapacity(..)
+  }
+  class ChainCompensator {
+    ~unwind(id, stage, reason): List<String>
+  }
+  class Registration {
+    -status: Status
+    -failedStage
+    +reference(): String
+  }
+  enum "Registration.Status" as RStatus {
+    STARTED
+    PENDING_B
+    PENDING_C
+    COMPLETED
+    REJECTED
+    COMPENSATING
+    COMPENSATED
+  }
+  class RegistrationLog <<gateway>>
+  class RegistrationSnapshot <<record>>
+  interface StepListener
+  class RegistrationException
+  class InvalidRegistrationException
+  class RegistrationRejectedException
+  class RegistrationFailedException
+}
+
+package "A: eligibility" {
+  class EligibilityService {
+    +submit(ref, studentId, course): EnrollmentRequest
+    +cancel(ref, reason)
+    +approvedRequest(ref)
+  }
+  class PrerequisiteChecker <<logic>>
+  class FinancialHoldChecker <<logic>>
+  class EligibilityRepository <<gateway>>
+  class EnrollmentRequest {
+    -status: PENDING|APPROVED|REJECTED|CANCELLED
+  }
+  class StudentRecord <<record>>
+  class EligibilityException
+}
+
+package "B: seating" {
+  class SeatingService {
+    +reserve(ref, studentId, course): SeatReservation
+    +confirm(ref)
+    +release(ref)
+  }
+  class SeatAllocator <<logic>>
+  class WaitlistManager
+  class SeatingRepository <<gateway>>
+  class SeatReservation {
+    -status: HELD|CONFIRMED|WAITLISTED|RELEASED
+  }
+  class CourseSection <<record>>
+  class SeatUnavailableException
+}
+
+package "C: records" {
+  class BillingSystem {
+    +issue(ref, studentId, course, credits): Invoice
+    +voidFor(ref)
+    +pay(ref)
+  }
+  class TranscriptService {
+    +record(ref, studentId, course, term)
+    +removeFor(ref)
+  }
+  class TuitionCalculator <<logic>>
+  class RecordsRepository <<gateway>>
+  class Invoice {
+    -status: ISSUED|PAID|VOIDED
+  }
+  class StudentAccount <<record>>
+  class TranscriptEntry <<record>>
+  class FinalizationException
+}
+
+package "storage" {
+  class SqliteStore
+}
+
+RegistrarCli --> RegistrationFacade
+RegistrarCli --> RegistrarAdminFacade
+RegistrarCli ..> Registrar : builds via
+Registrar ..> RegistrationFacade : creates
+Registrar ..> RegistrarAdminFacade : creates
+DemoData ..> EligibilityRepository : seeds
+DemoData ..> SeatingRepository : seeds
+DemoData ..> RecordsRepository : seeds
+
+RegistrationFacade --> RegistrationLog
+RegistrationFacade --> ChainCompensator
+RegistrationFacade --> StepListener
+RegistrationFacade --> EligibilityService
+RegistrationFacade --> SeatingService
+RegistrationFacade --> BillingSystem
+RegistrationFacade --> TranscriptService
+RegistrarAdminFacade --> RegistrationLog
+RegistrarAdminFacade --> ChainCompensator
+RegistrarAdminFacade --> EligibilityService
+RegistrarAdminFacade --> SeatingService
+RegistrarAdminFacade --> BillingSystem
+RegistrarAdminFacade --> TranscriptService
+RegistrarAdminFacade ..> RegistrationSnapshot : returns
+ChainCompensator --> EligibilityService
+ChainCompensator --> SeatingService
+ChainCompensator --> BillingSystem
+ChainCompensator --> TranscriptService
+ChainCompensator --> RegistrationLog
+RegistrationLog ..> Registration : persists
+Registration *-- RStatus
+RegistrationException <|-- InvalidRegistrationException
+RegistrationException <|-- RegistrationRejectedException
+RegistrationException <|-- RegistrationFailedException
+
+EligibilityService --> EligibilityRepository
+EligibilityService --> PrerequisiteChecker
+EligibilityService --> FinancialHoldChecker
+EligibilityRepository ..> EnrollmentRequest : persists
+EligibilityRepository ..> StudentRecord : persists
+EligibilityService ..> EligibilityException : throws
+
+SeatingService --> SeatingRepository
+SeatingService --> SeatAllocator
+SeatingService --> WaitlistManager
+WaitlistManager --> SeatingRepository
+SeatingRepository ..> SeatReservation : persists
+SeatingRepository ..> CourseSection : persists
+SeatingService ..> SeatUnavailableException : throws
+
+BillingSystem --> RecordsRepository
+BillingSystem --> TuitionCalculator
+TranscriptService --> RecordsRepository
+RecordsRepository ..> Invoice : persists
+RecordsRepository ..> StudentAccount : persists
+RecordsRepository ..> TranscriptEntry : persists
+BillingSystem ..> FinalizationException : throws
+TranscriptService ..> FinalizationException : throws
+
+EligibilityRepository --> SqliteStore
+SeatingRepository --> SqliteStore
+RecordsRepository --> SqliteStore
+RegistrationLog --> SqliteStore
+@enduml
