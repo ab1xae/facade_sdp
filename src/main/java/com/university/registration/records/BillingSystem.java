@@ -1,6 +1,7 @@
 package com.university.registration.records;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 public final class BillingSystem {
@@ -23,7 +24,7 @@ public final class BillingSystem {
                 .orElseThrow(() -> new FinalizationException("No billing account for " + studentId));
         long amount = calculator.tuitionFor(credits, account.scholarshipPercent());
         if (!calculator.fitsCreditLimit(account, amount)) {
-            throw new FinalizationException(String.format(
+            throw new FinalizationException(String.format(Locale.ROOT,
                     "Billing rejected: balance %,d + tuition %,d exceeds credit limit %,d KZT",
                     account.balance(), amount, account.creditLimit()));
         }

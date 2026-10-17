@@ -1,5 +1,7 @@
 package com.university.registration.records;
 
+import java.util.Locale;
+
 public final class Invoice {
 
     public enum Status {
@@ -75,6 +77,6 @@ public final class Invoice {
 
     @Override
     public String toString() {
-        return String.format("Invoice #%d %-7s %-4s %-8s %,d KZT %s", id, reference, studentId, courseCode, amount, status);
+        return String.format(Locale.ROOT, "Invoice #%d %-7s %-4s %-8s %,d KZT %s", id, reference, studentId, courseCode, amount, status);
     }
 }
